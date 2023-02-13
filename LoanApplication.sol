@@ -30,6 +30,11 @@ contract LoanApplication {
     event LoanRepaid(address indexed borrower, uint256 loanId);
     event InterestRateSet(uint256 amount, uint256 duration, uint256 interestRate);
 
+    // function to revert all unknown transactions
+    receive () external payable {
+        revert("This contract does not accept");
+    }
+    
     // Generate a unique loan ID
     function generateLoanId(uint256 _amount) internal view returns (uint256) {
         uint256 time = block.timestamp;
@@ -45,7 +50,7 @@ contract LoanApplication {
             creditworthiness[msg.sender] = 50;
         }
 
-        require(creditworthiness[msg.sender] >= 50, "Insufficient creditworthiness.");
+        require(creditworthiness[msg.sender] >= 50, "Insufficient creditworthiness, you should improve your credit score");
 
         uint256 interestRate = interestRates[_amount][_duration];
 
@@ -65,18 +70,18 @@ contract LoanApplication {
     function approveLoan(address payable _borrower, uint256 _loanId) public {
         // Check if the loan with the specified ID exists for the borrower
         Loan memory loan = loans[_borrower][_loanId];
-        require(loan.loanId == _loanId, "Loan not found.");
+        require(loan.loanId == _loanId, "No such loan found");
         // Check if loan is not approved
-        require(!loan.approved, "Loan already approved.");
+        require(!loan.approved, "Loan already approved");
 
         // Check if creditworthiness of the borrower is sufficient
-        require(creditworthiness[_borrower] >= 50, "Insufficient creditworthiness.");
+        require(creditworthiness[_borrower] >= 50, "Insufficient creditworthiness, you should improve your credit score");
 
         // Transfer the loan amount to the borrower
-        require(contractBalance >= loan.amount, "Insufficient funds in contract.");
+        require(contractBalance >= loan.amount, "Sorry ! Insufficient funds in contract, consider reducing the loan amount or try later");
         // Check the success of the transfer
         bool transferSuccessful = _borrower.send(loan.amount);
-        require(transferSuccessful, "Transfer failed.");
+        require(transferSuccessful, "Transaction failedd");
         contractBalance -= loan.amount;
 
         // Approve the loan
@@ -116,12 +121,6 @@ contract LoanApplication {
         interestRates[_amount][_duration] = _interestRate;
         
         emit InterestRateSet(_amount, _duration, _interestRate);
-    }
-
-    // Default function to revert all unknown transactions
-    fallback () external payable {
-        // Your code here, for example to revert unknown transactions
-        revert("This contract does not accept ether.");
     }
 
 }

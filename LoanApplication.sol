@@ -36,11 +36,16 @@ contract LoanApplication {
     }
     
     // Generate a unique loan ID
-    function generateLoanId(uint256 _amount) internal view returns (uint256) {
-        uint256 time = block.timestamp;
-        uint256 random = uint256(keccak256(abi.encodePacked(time, msg.sender, _amount)));
-        return random;
+    // function generateLoanId(uint256 _amount) internal view returns (uint256) {
+    //     uint256 time = block.timestamp;
+    //     uint256 random = uint256(keccak256(abi.encodePacked(time, msg.sender, _amount)));
+    //     return random;
+    // }
+    function generateLoanId(uint256 _amount) public view returns (uint256) {
+        bytes32 nonce = keccak256(abi.encodePacked(block.timestamp, msg.sender, _amount));
+        return uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, _amount, nonce)));
     }
+
 
     // Function to apply for a loan
     function applyForLoan(uint256 _amount, uint256 _duration) public {

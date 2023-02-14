@@ -6,42 +6,55 @@ import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contr
 contract RegisterLogin {
     enum UserStatus { NotRegistered, Registered }
     enum UserRole { NormalUser, Admin }
-    
-    mapping (address => UserStatus) private userStatus;
-    mapping (address => string) private users;
-    mapping (address => UserRole) private userRoles;
+    enum Action { AdminAction }
 
-    function register(string memory _username) public {
-        require(bytes(_username).length != 0, "Username cannot be empty");
-        require(userStatus[msg.sender] == UserStatus.NotRegistered, "You are already registered !");
-        users[msg.sender] = _username;
-        userStatus[msg.sender] = UserStatus.Registered;
-        userRoles[msg.sender] = UserRole.NormalUser;
+    using SafeMath for uint256;
+
+    struct User {
+        string username;
+        bytes32 passwordHash;
+        UserRole role;
     }
 
-    function login() public view returns (string memory) {
-        require(userStatus[msg.sender] == UserStatus.Registered, "User not registered.");
-        return users[msg.sender];
+    mapping (address => User) private users;
+    mapping (address => UserStatus) private userStatuses;
+
+    function register(string memory _username, bytes32 _password) external {
+        require(bytes(_username).length != 0, "Username must not be empty.");
+        require(userStatuses[msg.sender] == UserStatus.NotRegistered, "User is already registered");
+
+        users[msg.sender].username = _username;
+        users[msg.sender].passwordHash = keccak256(abi.encodePacked(_password));
+        users[msg.sender].role = UserRole.NormalUser;
+        userStatuses[msg.sender] = UserStatus.Registered;
     }
 
-    function updateUsername(string memory _newUsername) public {
-        require(userStatus[msg.sender] == UserStatus.Registered, "User not registered.");
-        require(bytes(_newUsername).length != 0, "Username cannot be empty");
-        users[msg.sender] = _newUsername;
+    function login(bytes32 _password) public view returns (string memory) {
+        require(userStatuses[msg.sender] == UserStatus.Registered, "User is not registered");
+        require(keccak256(abi.encodePacked(_password)) == users[msg.sender].passwordHash, "Incorrect password");
+        return users[msg.sender].username;
     }
 
-    function logout() public {
-        require(userStatus[msg.sender] == UserStatus.Registered, "User not registered.");
+    function updateUsername(string memory _newUsername) external {
+        require(userStatuses[msg.sender] == UserStatus.Registered, "User is not registered");
+        require(bytes(_newUsername).length != 0, "Username must not be empty");
+
+        users[msg.sender].username = _newUsername;
+    }
+
+    function logout() external {
+        require(userStatuses[msg.sender] == UserStatus.Registered, "User is not registered");
+
         delete users[msg.sender];
-        userStatus[msg.sender] = UserStatus.NotRegistered;
+        userStatuses[msg.sender] = UserStatus.NotRegistered;
     }
 
-    function performAction(string memory _action) view public {
-        require(userStatus[msg.sender] == UserStatus.Registered, "User not registered.");
-        require(keccak256(abi.encodePacked("adminAction")) == keccak256(abi.encodePacked(_action)), "Action not supported.");
-        if (keccak256(abi.encodePacked("adminAction")) == keccak256(abi.encodePacked(_action)) && userRoles[msg.sender] != UserRole.Admin) {
-            revert("Unauthorized access.");
+    function performAction(Action _action) view public {
+        require(userStatuses[msg.sender] == UserStatus.Registered, "User is not registered");
+        require(_action == Action.AdminAction, "Unsupported action");
+
+        if (_action == Action.AdminAction && users[msg.sender].role != UserRole.Admin) {
+            revert("Unauthorized access");
         }
-        // Perform action here
     }
 }
